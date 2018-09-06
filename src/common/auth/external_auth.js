@@ -11,9 +11,9 @@ if (!window.externalApp && !window.webkit) {
 }
 
 function getMeth(name) {
-  window.externalApp ?
-      window.externalApp[name] :
-      window.webkit.messageHandlers[name].postMessage;
+  return window.externalApp ?
+    window.externalApp[name] :
+    window.webkit.messageHandlers[name].postMessage;
 }
 
 export default class ExternalAuth extends Auth {
