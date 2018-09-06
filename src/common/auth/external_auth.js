@@ -3,10 +3,17 @@
  */
 import { Auth } from 'home-assistant-js-websocket';
 
-const CALLBACK_METHOD = 'externalAuthSetToken';
+const CALLBACK_SET_TOKEN = 'externalAuthSetToken';
+const CALLBACK_REVOKE_TOKEN = 'externalAuthRevokeToken';
 
 if (!window.externalApp && !window.webkit) {
   throw new Error('External auth requires either externalApp or webkit defined on Window object.');
+}
+
+function getMeth(name) {
+  window.externalApp ?
+      window.externalApp[name] :
+      window.webkit.messageHandlers[name].postMessage;
 }
 
 export default class ExternalAuth extends Auth {
@@ -22,16 +29,12 @@ export default class ExternalAuth extends Auth {
   }
 
   async refreshAccessToken() {
-    const meth = window.externalApp ?
-      window.externalApp.getExternalAuth :
-      window.webkit.messageHandlers.getExternalAuth.postMessage;
-
-    const responseProm = new Promise((resolve) => { window[CALLBACK_METHOD] = resolve; });
+    const responseProm = new Promise((resolve) => { window[CALLBACK_SET_TOKEN] = resolve; });
 
     // Allow promise to set resolve on window object.
     await 0;
 
-    meth({ callback: CALLBACK_METHOD });
+    getMeth('getExternalAuth')({ callback: CALLBACK_SET_TOKEN });
 
     // Response we expect back:
     // {
@@ -42,5 +45,16 @@ export default class ExternalAuth extends Auth {
 
     this.data.access_token = tokens.access_token;
     this.data.expires = (tokens.expires_in * 1000) + Date.now();
+  }
+
+  async revoke() {
+    const responseProm = new Promise((resolve) => { window[CALLBACK_REVOKE_TOKEN] = resolve; });
+
+    // Allow promise to set resolve on window object.
+    await 0;
+
+    getMeth('revokeExternalAuth')({ callback: CALLBACK_REVOKE_TOKEN });
+
+    await responseProm;
   }
 }
